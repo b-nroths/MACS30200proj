@@ -1,0 +1,255 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document: default
+---
+
+
+```{r}
+knitr::opts_chunk$set(message = FALSE,
+                      warning = FALSE,
+                      echo = FALSE)
+```
+```{r, include = FALSE}
+library(tidyverse)
+library(car)
+```
+```{r}
+biden_data <- read_csv("biden.csv") %>%
+  mutate(obs_num = as.numeric(rownames(.)))
+
+biden_omit <- biden_data %>%
+  na.omit()
+
+(lm_init_biden <- biden_omit %>%
+  lm(biden ~ age + female + educ, data = .))
+```
+
+## 1.  
+One thing that can be done to find higly influential observations is to look at the effect each observation has on the coefficients by a few different measures: leverage, discrepency, and Cook's D (leverage x discrepency).  Below I calculate these values for each observation and plot the leverage and residual of each observation.  Points in red have the high Cook's D values.
+
+```{r}
+cutoff <- 4 / (nrow(biden_omit) - length(coef(lm_init_biden)) - 1 -1)
+
+biden_data <- biden_omit %>%
+  mutate(lev_hat = hatvalues(lm_init_biden),
+         discrep_student = rstudent(lm_init_biden),
+         infl_cook = cooks.distance(lm_init_biden))
+
+influential <- biden_data %>%
+  filter(lev_hat >= 2 * mean(lev_hat) | 
+           abs(discrep_student) > 2 | 
+           infl_cook > cutoff) %>%
+  mutate(high_cooks = ifelse(infl_cook > cutoff, "high_cooks", "otherwise"))
+
+# Bubble Plot
+ggplot(influential, aes(lev_hat, discrep_student)) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_point(aes(size = infl_cook, color = high_cooks), shape = 1) +
+  scale_size_continuous(range = c(1, 20)) +
+  geom_vline(xintercept = 2 * mean(biden_data$lev_hat), color = "red", linetype = "dashed") + 
+  labs(title = "Bubble Plot",
+       subtitle = paste(sprintf("Observations with High Leverage, Discrepancy, or Influence\n"),
+                        "Red Indicates High Cooks D (Influence)"),
+       x = "Leverage",
+       y = "Studentized residual") +
+  scale_color_manual(values = c("high_cooks" = "red", "otherwise" = "black")) + 
+  theme(legend.position = "none")
+```
+
+
+From these results I would suggest to look at observations with a high Cook's D value to see if there is an obvious reason why.  One issue with our dataset is that there are not a lot of observations (1,807 after omitting variables).  I would want to make sure the makeup of our dataset is also representative of the whole population.  For example if we find that a certain subset of observaions with a high Cook's D value are not common in the entire population it might make sense to drop those observations.  Below I plot a histogram of male's and females observations with the number of inflential observations.
+
+```{r}
+biden_data <- biden_data %>%
+  mutate(`Unusual or Influential` = ifelse(obs_num %in% influential$obs_num, "Yes", "No"))
+
+biden_data %>% 
+  mutate(female = ifelse(female == 1, "Female", "Male")) %>%
+  ggplot(aes(female, fill = `Unusual or Influential`)) +
+    geom_histogram(stat = "count", bins = 10) + 
+    labs(title = "Gender",
+         subtitle = "All Observations with High Leverage, Discrepancy, or Influence",
+         x = "Gender",
+         y = "Count")
+```
+
+For example, in the histogram above you can see that 11.6% of males have a high discrepency, influence, or leverage whereas only 7.3% of females do.  This is concerning to me because if I want to extrapolate my results to a population with a 50/50 male/female ratio the results of my regression might now because male observations are having a higher influence on the results.  To correct for this I might omit some of my male observations.
+
+```{r}
+car::qqPlot(lm_init_biden, main = "Normal Quantile Plot for Studentized Residuals of Initial Linear Model",
+            ylab = "Studentized Residuals")
+```
+
+From the plot of the error above, it does not look normally distributed (especially on the outer quantiles).  In order to fix this I would attempt to add or combine or transform some of the independent variables to see if the error term is closer to a normal distribution.
+
+
+3.  To test for heteroscedasticity in the model I will perform the Bresuch-Pagan test.
+```{r}
+library(lmtest)
+bptest(lm_init_biden)
+```
+
+My value is less than 0.05 which means that there is heterscedasticity in the model or that the errors of the coeficcient estimates are not of constant variance.  This could influence the estimates for the coefiecients and standard errors in our model.
+
+4.  To test for multicollinearity I will look at the VIF for each coefficient.
+
+```{r}
+car::vif(lm_init_biden)
+```
+
+Since the values for each variable are less than 10 (which is a good rule of thumb) I do not believe there is any colinearity in this simple model.
+
+
+## 2.  Interaction Terms
+```{r}
+library(stringr)
+(interaction_biden <- biden_omit %>%
+  lm(biden ~ age + educ + age * educ, data = .))
+
+linearHypothesis(interaction_biden, "age + age:educ")
+
+instant_effect <- function(model, mod_var){
+  # get interaction term name
+  int.name <- names(model$coefficients)[[which(str_detect(names(model$coefficients), ":"))]]
+  
+  marg_var <- str_split(int.name, ":")[[1]][[which(str_split(int.name, ":")[[1]] != mod_var)]]
+  
+  # store coefficients and covariance matrix
+  beta.hat <- coef(model)
+  cov <- vcov(model)
+  
+  # possible set of values for mod_var
+  if(class(model)[[1]] == "lm"){
+    z <- seq(min(model$model[[mod_var]]), max(model$model[[mod_var]]))
+  } else {
+    z <- seq(min(model$data[[mod_var]]), max(model$data[[mod_var]]))
+  }
+  
+  # calculate instantaneous effect
+  dy.dx <- beta.hat[[marg_var]] + beta.hat[[int.name]] * z
+  
+  # calculate standard errors for instantaeous effect
+  se.dy.dx <- sqrt(cov[marg_var, marg_var] +
+                     z^2 * cov[int.name, int.name] +
+                     2 * z * cov[marg_var, int.name])
+  
+  # combine into data frame
+  data_frame(z = z,
+             dy.dx = dy.dx,
+             se = se.dy.dx)
+}
+
+instant_effect(interaction_biden, "educ") %>%
+    ggplot(aes(z, dy.dx,
+             ymin = dy.dx - 1.96 * se,
+             ymax = dy.dx + 1.96 * se)) +
+  geom_pointrange() +
+  geom_hline(yintercept = 0, linetype = 2) +
+  labs(title = "Marginal effect of age",
+       subtitle = "By respondent education",
+       x = "Respondent education",
+       y = "Estimated marginal effect")
+```
+To evaluate the marginal effect of age on Joe Biden thermometer, conditional on education I plotted the estimated marginal effect of age by education level.  It can be seen here that the marginal effect decreases as education increases.  I also ran the Wald Test to find the pvalue to find that the  the marginal effect of education on age's impact is significant
+
+```{r}
+instant_effect(interaction_biden, "age") %>%
+  ggplot(aes(z, dy.dx,
+             ymin = dy.dx - 1.96 * se,
+             ymax = dy.dx + 1.96 * se)) +
+  geom_pointrange() +
+  geom_hline(yintercept = 0, linetype = 2) +
+  labs(title = "Marginal effect of education",
+       subtitle = "By respondent age",
+       x = "Respondent age",
+       y = "Estimated marginal effect")
+
+# Run Wald test to check for variable significance of education
+linearHypothesis(interaction_biden, "age + age:educ")
+```
+
+Similarlly, I plotted the marginal effect of education on biden feeling conditional on respondant age.  It also decreases as age increases.  The significance is also confirmed via the Wald Test because the p-value is less than 0.05.
+
+
+## 3. Missing Data
+
+```{r}
+require(MASS)
+require(dplyr)
+require(MVN)
+require(tidyverse)
+
+# get rid of ID column, unnecessary for Part Three
+biden_data <- read_csv("biden.csv") %>%
+  na.omit() %>%
+  mutate(ID = row_number())
+biden_data
+
+biden_3 <- biden_data %>%
+  dplyr::select(biden, age, educ, female, dem, rep)
+
+hzTest(biden_data %>%
+         dplyr::select(-c(biden, female, dem, rep)))
+
+uniNorm(biden_data %>% 
+          na.omit() %>%
+          dplyr::select(-c(biden, female, dem, rep)), type = "SW", desc = FALSE)
+```
+
+I first test for multivariate normality using the Henze-Zrkler Test to see if the variables are distributed as a multivariate normal distribution.  The result of the test states that the data are not multivariate normal.  In order to fix this I will try to transform the variables and retest.  For example, below I take the sqrt of age and see that my HZ value improves, though it still don't pass the Shapiro-Wilk test.
+
+```{r}
+biden_data <- biden_data %>%
+  mutate(sqrt_educ = sqrt(educ), sqrt_age = sqrt(age))
+
+print("Sqrt age and educ")
+hzTest(biden_data %>%
+         dplyr::select(sqrt_educ, sqrt_age))
+
+uniNorm(biden_data %>%
+          dplyr::select(sqrt_educ, sqrt_age), type = "SW", desc = FALSE)
+```
+
+I will now compre this model with the previous one.
+```{r, include=TRUE, cache = FALSE}
+library(Amelia)
+library(broom)
+biden_full <- read_csv("biden.csv")
+biden_full.out <- amelia(as.data.frame(biden_full), m = 5)
+
+models_imp <- data_frame(data = biden_full.out$imputations) %>%
+  mutate(model = map(data, ~ lm(biden ~ age +
+                                  female + educ,
+                                data = .x)),
+         coef = map(model, broom::tidy)) %>%
+  unnest(coef, .id = "id")
+
+mi.meld.plus <- function(df_tidy){
+  # transform data into appropriate matrix shape
+  coef.out <- df_tidy %>%
+    dplyr::select(id:estimate) %>%
+    spread(term, estimate) %>%
+    dplyr::select(-id)
+  
+  se.out <- df_tidy %>%
+    dplyr::select(id, term, std.error) %>%
+    spread(term, std.error) %>%
+    dplyr::select(-id)
+  
+  combined.results <- mi.meld(q = coef.out, se = se.out)
+  
+  data_frame(term = colnames(combined.results$q.mi),
+             estimate.mi = combined.results$q.mi[1, ],
+             std.error.mi = combined.results$se.mi[1, ])
+}
+
+# compare results
+tidy(lm_init_biden) %>%
+  left_join(mi.meld.plus(models_imp)) %>%
+  dplyr::select(-statistic, -p.value)
+```
+
+Using the imputed model does not give us very different results than the original model.
