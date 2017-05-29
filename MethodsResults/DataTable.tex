@@ -1,0 +1,63 @@
+\documentclass{article}
+\usepackage[labelfont={bf}]{caption}
+\usepackage{booktabs,lipsum}
+\usepackage{makecell}
+\usepackage{multirow}
+\usepackage[letterpaper, landscape, margin=2in]{geometry}
+\usepackage{booktabs,caption,fixltx2e}
+\usepackage[flushleft]{threeparttable}
+\usepackage{caption}
+\usepackage{bm}
+\begin{document}
+
+
+% & \thead{\# Obs.} &  \thead{Avg \# Obs/day} & Source\\
+\begin{table}
+\begin{threeparttable}
+\caption{Data Descriptions}
+\begin{tabular}{ |p{6cm}||p{2cm}|p{3cm}|p{6cm}|  }
+ \hline
+ \hline
+ & \# Obs. &  Avg \# Obs/day & Source\\
+ \hline
+ Crimes - Theft                      & 215,075    & 425     & Chicago Police Department \\
+ Crimes - Non-Theft                  & 128,487    & 253     & \\
+ \hline
+ Building Violations                 & 165,681    & 324     & Chicago Department of Buildings\\
+ \hline
+ 311 Graffiti Request                & 164,318    & 321     & City of Chicago 311 Requests \\
+ 311 Sanitation Request              & 28,537     & 55      & \\
+ 311 Alley Lights Out - Gangs        & 2,243      & 4       & \\
+ 311 Alley Lights Out - No Gangs     & 4,333      & 8       & \\
+ 311 Vacant Building - Gangs         & 2,243      & 4       & \\
+ 311 Vacant Building Out - No Gangs  & 4,333      & 8       & \\
+ \hline
+ Food Inspection - Pass              & 16,945     & 33 & \multirow{3}{4cm}{Chicago Department of Public Helath Food Protection Program} \\ 
+ Food Inspection - Pass w/Condition  & 5,674      & 11 & \\ 
+ Food Inspection - Fail              & 3,342      & 6  & \\ 
+ \hline
+ Red Light Tickets\textsuperscript{1}                   & 86,817     & 964     & Chicago Tribune\\
+ \hline
+ Liquor Licenses\textsuperscript{2}                     & 4,541      & n/a     & Department of Business Affairs and Consumer Protection, City of Chicago\\
+ \hline
+ Tweets - Good Sentiment\textsuperscript{3}          & 375        & n/a     & Twitter\\
+ Tweets - Bad Sentiment                & 62         & n/a      & \\
+ \hline
+\end{tabular}
+\begin{tablenotes}
+      \small
+      \item 1. Red light ticket data is only available from 12/2/2013 to 1/3/2014 \\
+          2. Liquor Licenses dataset is for current liscenses only so it is not shown over time. \\
+          3. Since the twitter dataset was added recently, there is no historical data past what was collected.
+    \end{tablenotes}
+    \end{threeparttable}
+\end{table}
+
+\begin{figure}
+\centering
+OLS Regression
+\[ Theft_{(t,j)} = \alpha + \beta_1 \bm{X}_{(t,j)} + \beta_2 \bm{X}_{j} + \epsilon_t \]
+Spatial OLS Regression\\ 
+\[ Theft_{(t,j)} = \alpha + \beta_1 \bm{X}_{(t,j)} + \beta_2 \bm{X}_j + \beta_3 \bm{\bar{X}}_{(t,{j_{neighbors}})} + \beta_4 \bm{\bar{X}}_{(j_{neighbors})} + \epsilon_t \]
+\end{figure}
+\end{document}
