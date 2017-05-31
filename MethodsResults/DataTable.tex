@@ -8,6 +8,9 @@
 \usepackage[flushleft]{threeparttable}
 \usepackage{caption}
 \usepackage{bm}
+\usepackage{tikz}
+\usetikzlibrary{snakes}
+
 \begin{document}
 
 
@@ -40,19 +43,19 @@
  \hline
  Liquor Licenses\textsuperscript{2}                     & 4,541      & n/a     & Department of Business Affairs and Consumer Protection, City of Chicago\\
  \hline
- Tweets - Good Sentiment\textsuperscript{3}          & 375        & n/a     & Twitter\\
- Tweets - Bad Sentiment                & 62         & n/a      & \\
+ Tweets - Good Sentiment\textsuperscript{3}          & 1,052        & n/a     & Twitter\\
+ Tweets - Bad Sentiment                & 183         & n/a      & \\
  \hline
 \end{tabular}
 \begin{tablenotes}
       \small
       \item 1. Red light ticket data is only available from 12/2/2013 to 1/3/2014 \\
           2. Liquor Licenses dataset is for current liscenses only so it is not shown over time. \\
-          3. Since the twitter dataset was added recently, there is no historical data past what was collected.
+          3. Twitter dataset was added recently so there is no historical data past what was collected.
     \end{tablenotes}
     \end{threeparttable}
 \end{table}
-
+\clearpage
 \begin{figure}
 \centering
 OLS Regression
@@ -60,4 +63,28 @@ OLS Regression
 Spatial OLS Regression\\ 
 \[ Theft_{(t,j)} = \alpha + \beta_1 \bm{X}_{(t,j)} + \beta_2 \bm{X}_j + \beta_3 \bm{\bar{X}}_{(t,{j_{neighbors}})} + \beta_4 \bm{\bar{X}}_{(j_{neighbors})} + \epsilon_t \]
 \end{figure}
+
+
+\clearpage
+
+  \begin{tikzpicture}[snake=zigzag, line before snake = 5mm, line after snake = 5mm]
+    % draw horizontal line   
+    \draw (0,0) -- (10,0);
+
+    \draw (0cm, 3pt) -- (0cm, -3pt);
+    \draw (5cm, 3pt) -- (5cm, 0pt);
+    \draw (9cm, 3pt) -- (9cm, -3pt);
+    
+
+    % draw nodes
+    \draw (0,0) node[below=3pt] {Training Data Start} node[above=3pt] {$j$};
+
+    \draw (5,0) node[below=3pt] {Training Data End} node[above=3pt] {0};
+    \draw (6,0) node[below=3pt] {$  $} node[above=3pt] {$  $};
+    \draw (9,0) node[below=3pt] {Prediction} node[above=3pt] {$i$};
+  \end{tikzpicture}
+
+
+
+
 \end{document}
