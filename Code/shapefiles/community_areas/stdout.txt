@@ -1,0 +1,12 @@
+SET
+SET
+BEGIN
+CREATE TABLE
+ALTER TABLE
+                        addgeometrycolumn                        
+-----------------------------------------------------------------
+ public.community_areas.geom SRID:0 TYPE:MULTILINESTRING DIMS:2 
+(1 row)
+
+COMMIT
+ANALYZE

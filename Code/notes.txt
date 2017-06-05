@@ -1,0 +1,64 @@
+crimes: 2001 - present
+2001
+
+50733
+
+http://darribas.org/gds_scipy16/ipynb_md/08_spatial_regression.html
+
+
+https://sizzy.co/?url=https%3A%2F%2Fvroom.com
+
+
+shp2pgsql sql_statement.dbf public.neighborhoods | psql -h host -d uchicago -U bnroths -W pw
+
+
+pgsql2shp -f sql_statement -h host -d uchicago -U bnroths -P pw gisdb "SELECT row_number() over() as id, the_geom FROM different_schema.field_polygons WHERE id = 1"
+
+export PGPASSWORD=pw
+
+Pixels
+Format
+
+225/ppi
+pdf
+42in
+graphicarts@uchicago.edusket
+
+
+sudo yum -y install gcc-c++ python27-devel atlas-sse3-devel lapack-devel
+wget https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.2.tar.gz
+tar xzf virtualenv-1.11.2.tar.gz 
+python27 virtualenv-1.11.2/virtualenv.py sk-learn
+. sk-learn/bin/activate
+pip install numpy
+
+ssh -i "~/code/ttic.pem" ec2-user@ec2-54-85-59-70.compute-1.amazonaws.com
+
+
+select current_user;
+create extension postgis;
+create extension fuzzystrmatch;
+create extension postgis_tiger_geocoder;
+create extension postgis_topology;
+
+alter schema tiger owner to rds_superuser;
+alter schema tiger_data owner to rds_superuser;
+alter schema topology owner to rds_superuser;
+
+CREATE FUNCTION exec(text) returns text language plpgsql volatile AS $f$ BEGIN EXECUTE $1; RETURN $1; END; $f$;      
+
+
+SELECT exec('ALTER TABLE ' || quote_ident(s.nspname) || '.' || quote_ident(s.relname) || ' OWNER TO rds_superuser;')
+  FROM (
+    SELECT nspname, relname
+    FROM pg_class c JOIN pg_namespace n ON (c.relnamespace = n.oid) 
+    WHERE nspname in ('tiger','topology') AND
+    relkind IN ('r','S','v') ORDER BY relkind = 'S')
+s;  
+
+
+SET search_path=public,tiger;  
+
+select na.address, na.streetname, na.streettypeabbrev, na.zip from normalize_address('1 Devonshire Place, Boston, MA 02109') as na;
+
+select topology.createtopology('my_new_topo',26986,0.5);
